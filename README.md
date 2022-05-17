@@ -10,9 +10,13 @@
 
 ## 注意
 
-### 需要 替换 文件 mingw64 wtsapi32.h 
-https://github.com/luzexi/MinGW/blob/master/x86/include/wtsapi32.h
-replace  mingw64 wtsapi32.h
+### 需要 替换 文件最新文件 wtsapi32.h 
+
+> <https://github.com/luzexi/MinGW/blob/master/x86/include/wtsapi32.h>
+
+replace  
+
+> /mingw64/include/wtsapi32.h
 
 
 ## ffmpeg 需要依赖的文件
