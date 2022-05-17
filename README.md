@@ -7,7 +7,6 @@
     * 等 屏幕解锁后，继续录屏
     * 目前window10 下验证通过
     * 其他window 7等系统，由于检测系统是否锁屏，系统api不完全一样，暂时不确定
-
 ## 注意
 
 ### 需要 替换 文件最新文件 wtsapi32.h 
@@ -19,7 +18,10 @@ replace
 > /mingw64/include/wtsapi32.h
 
 
-## ffmpeg 需要依赖的文件
+## 使用方式
+  * 用 gdigrab.c 替换 ffmpeg 源码库中 对应文件，然后进行编译生成
+
+## ffmpeg.exe 需要依赖的文件
 
 ```
 libbz2-1.dll       
