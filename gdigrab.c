@@ -79,6 +79,8 @@ struct gdigrab {
 #define TIME_2_SECS 1000*1000*2
 #define TIME_1_SECS 1000*1000*1
 
+#include <processthreadsapi.h>
+
 
 // https://github.com/luzexi/MinGW/blob/master/x86/include/wtsapi32.h
 // replace  mingw64 wtsapi32.h
@@ -138,6 +140,37 @@ gdigrab_hlib_init(void )
 }
 
 
+
+// "Windows Server 2008 R2 and Windows 7: 
+// ref https://msdn.microsoft.com/en-us/library/windows/desktop/ee621019(v=vs.85).aspx
+// Due to a code defect, the usage of the WTS_SESSIONSTATE_LOCK and WTS_SESSIONSTATE_UNLOCK flags is reversed."
+
+// 锁屏逻辑 正常，否则反向
+static BOOL g_lock_logic_normal = TRUE;
+
+static void  gdigrab_window_os_info()
+{
+    g_lock_logic_normal = TRUE;
+    double version;
+    
+	OSVERSIONINFOEX info;
+	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
+	info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+	GetVersionEx(&info);
+    
+	av_log(NULL, AV_LOG_WARNING, "Windows version: %lu.%lu\n", info.dwMajorVersion, info.dwMinorVersion);
+    av_log(NULL, AV_LOG_WARNING, "Windows station %d \n", (info.wProductType == VER_NT_WORKSTATION));
+
+    if (info.dwMajorVersion==6 && info.dwMinorVersion ==1)
+    {
+        // window 7 and window 8 , reverse
+        g_lock_logic_normal = FALSE;
+    }
+}
+
+
+
 /**
  * @return 1 lockscreen, 0 unlock
  */
@@ -152,13 +185,20 @@ gdigrab_is_lockscreen(void )
     LPTSTR ppBuffer = NULL;
     DWORD dwBytesReturned = 0;
     LONG dwFlags = 0;
-    DWORD dwSessionID = WTSGetActiveConsoleSessionId();
+    // DWORD dwSessionID = WTSGetActiveConsoleSessionId();
+    DWORD dwSessionID = 0;
     
     if (g_pWTSQuerySessionInformation==NULL)
         return bRet;
     if (g_pWTSFreeMemory == NULL)
         return bRet;
 
+    // get right sessionid
+	if (!ProcessIdToSessionId(GetCurrentProcessId(), &dwSessionID)) 
+    {
+        av_log(NULL, AV_LOG_WARNING, "ProcessIdToSessionId FALSE \n ");     
+        return bRet;
+    }
     
     if (g_pWTSQuerySessionInformation(WTS_CURRENT_SERVER_HANDLE, dwSessionID, wtsic, &ppBuffer, &dwBytesReturned))
     {
@@ -167,16 +207,23 @@ gdigrab_is_lockscreen(void )
         {
     
             pInfo = (WTSINFOEXW*)ppBuffer;
+            
             if (pInfo->Level == 1)
             {
-    
                 dwFlags = pInfo->Data.WTSInfoExLevel1.SessionFlags;
             }
             if (dwFlags == WTS_SESSIONSTATE_LOCK)
             {
-    
                 bRet = TRUE;
             }
+            
+            // window 7 and window 8 reverse
+            if (g_lock_logic_normal==FALSE)
+            {
+                bRet = !bRet;
+            }
+            
+            // av_log(NULL, AV_LOG_WARNING, "bRet =%ld\n ",bRet);     
         }
         g_pWTSFreeMemory(ppBuffer);
         ppBuffer = NULL;
@@ -199,15 +246,18 @@ gdigrab_after_lock_2sec(void )
     if (gdigrab_is_lockscreen()==0)
     {
         g_lockscreen_start_time=0;
+        av_log(NULL, AV_LOG_WARNING, "is unlock screen \n");
         return 0;
     }    
+
+    av_log(NULL, AV_LOG_WARNING, "is lockscreen\n");
     
     curtime = av_gettime_relative();
     time_span= curtime - g_lockscreen_start_time;
     
     if (time_span > TIME_2_SECS)
     {
-        // av_log(NULL, AV_LOG_WARNING, " time_span > TIME_2_SECS\n ");     
+        av_log(NULL, AV_LOG_WARNING, " time_span > TIME_2_SECS\n ");     
         return 1;
     }
     
@@ -394,6 +444,7 @@ gdigrab_read_header(AVFormatContext *s1)
     int ret;
     
     gdigrab_hlib_init ();
+    gdigrab_window_os_info();
     
 
     if (!strncmp(filename, "title=", 6)) {
@@ -706,6 +757,12 @@ static int gdigrab_read_packet(AVFormatContext *s1, AVPacket *pkt)
     int file_size = gdigrab->header_size + gdigrab->frame_size;
 
     int64_t curtime, delay;
+    
+    // just for test window server
+    
+    // gdigrab_is_lockscreen();
+    // av_usleep(TIME_1_SECS);
+    
     
     if (gdigrab_after_lock_2sec() != 0)
     {
