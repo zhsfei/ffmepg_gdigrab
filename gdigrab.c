@@ -79,7 +79,9 @@ struct gdigrab {
 #define TIME_2_SECS 1000*1000*2
 #define TIME_1_SECS 1000*1000*1
 
+
 #include <processthreadsapi.h>
+
 
 
 // https://github.com/luzexi/MinGW/blob/master/x86/include/wtsapi32.h
@@ -193,12 +195,14 @@ gdigrab_is_lockscreen(void )
     if (g_pWTSFreeMemory == NULL)
         return bRet;
 
+    
     // get right sessionid
 	if (!ProcessIdToSessionId(GetCurrentProcessId(), &dwSessionID)) 
     {
         av_log(NULL, AV_LOG_WARNING, "ProcessIdToSessionId FALSE \n ");     
         return bRet;
     }
+    
     
     if (g_pWTSQuerySessionInformation(WTS_CURRENT_SERVER_HANDLE, dwSessionID, wtsic, &ppBuffer, &dwBytesReturned))
     {
