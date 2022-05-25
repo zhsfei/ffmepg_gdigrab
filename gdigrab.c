@@ -148,12 +148,11 @@ gdigrab_hlib_init(void )
 // Due to a code defect, the usage of the WTS_SESSIONSTATE_LOCK and WTS_SESSIONSTATE_UNLOCK flags is reversed."
 
 // 锁屏逻辑 正常，否则反向
-static BOOL g_lock_logic_normal = TRUE;
+static BOOL g_is_win7Orwin8r2 = TRUE;
 
 static void  gdigrab_window_os_info()
 {
-    g_lock_logic_normal = TRUE;
-    double version;
+    g_is_win7Orwin8r2 = FALSE;
     
 	OSVERSIONINFOEX info;
 	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
@@ -167,7 +166,7 @@ static void  gdigrab_window_os_info()
     if (info.dwMajorVersion==6 && info.dwMinorVersion ==1)
     {
         // window 7 and window 8 , reverse
-        g_lock_logic_normal = FALSE;
+        g_is_win7Orwin8r2 = TRUE;
     }
 }
 
@@ -222,7 +221,7 @@ gdigrab_is_lockscreen(void )
             }
             
             // window 7 and window 8 reverse
-            if (g_lock_logic_normal==FALSE)
+            if (g_is_win7Orwin8r2==TRUE)
             {
                 bRet = !bRet;
             }
